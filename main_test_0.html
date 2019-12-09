@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script src="https://rawgit.com/kangax/fabric.js/master/dist/fabric.js"></script>
+</head>
+
+<body>
+
+  <div class="image-display">
+    <h1>Swisscom Indoor Designer</h1>
+    <button onclick="butF()">
+      Undo
+    </button>
+    <canvas id="c" width="1400" height="600" style="border:1px solid rgb(48, 29, 29)"></canvas>
+  </div>
+  <h3>Params 1</h3>
+  <p id="params-1"></p>
+</body>
+
+</html>
+
+<style>
+  .image-display {
+    text-align: center;
+    position: relative;
+  }
+
+  #c {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+</style>
+
+<script type="text/javascript">
+
+  var c = document.getElementById("c");
+  var p1s = {
+    "current-x": "0",
+    "current-y": "0",
+    "c-width": c.clientWidth,
+    "c-height": c.clientHeight
+  }
+
+  function update_p1s() {
+    var p1 = document.getElementById("params-1");
+    p1.innerHTML = JSON.stringify(p1s);
+  }
+  update_p1s();
+
+  var canvas = new fabric.Canvas('c', {
+    selection: false
+  });
+
+  function paint_background() {
+    var h_steps_size = 20;
+    var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
+    var nr_vertical_boxes = p1s["c-height"] / 10;
+    console.log(nr_vertical_boxes, nr_horizontal_boxes);
+    var r = 200;
+    var g = 50;
+    for (var i = 0; i < nr_vertical_boxes * 10; i++) {
+      for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
+        var temp_rec = new fabric.Rect({ top: i, left: j, width: h_steps_size, height: 10, fill: "rgb(" + r + "," + j % 230 + ", " + i % 230 + ")" });
+        canvas.add(temp_rec);
+        j += h_steps_size;
+      }
+      i += 9;
+    }
+  }
+  paint_background();
+
+  var line, isDown;
+
+  canvas.on('mouse:down', function (o) {
+    isDown = true;
+    var pointer = canvas.getPointer(o.e);
+    var points = [pointer.x, pointer.y, pointer.x, pointer.y];
+    line = new fabric.Line(points, {
+      strokeWidth: 5,
+      fill: 'black',
+      stroke: 'black',
+      originX: 'center',
+      originY: 'center'
+    });
+    canvas.add(line);
+    p1s["current-x"] = pointer.x;
+    p1s["current-y"] = pointer.y;
+    update_p1s();
+  });
+
+  canvas.on('mouse:move', function (o) {
+    if (!isDown) return;
+    var pointer = canvas.getPointer(o.e);
+    line.set({
+      x2: pointer.x,
+      y2: pointer.y
+    });
+    canvas.renderAll();
+  });
+
+  canvas.on('mouse:up', function (o) {
+    isDown = false;
+    var pointer = canvas.getPointer(o.e);
+    p1s["current-x"] = pointer.x;
+    p1s["current-y"] = pointer.y;
+    update_p1s();
+  });
+
+  function butF() {
+    canvas.remove(canvas.item(canvas.getObjects().length - 1));
+  };
+
+</script>
