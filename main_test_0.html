@@ -37,7 +37,8 @@
     "current-x": "0",
     "current-y": "0",
     "c-width": c.clientWidth,
-    "c-height": c.clientHeight
+    "c-height": c.clientHeight,
+    "mousesstate": "nothing yet"
   }
 
   function update_p1s() {
@@ -45,26 +46,33 @@
     p1.innerHTML = JSON.stringify(p1s);
   }
 
-  function paint_background() {
-    var h_steps_size = 10;
-    var v_steps_size = 10;
+  function paint_heatmap() {
+    var i_d = 200,
+      j_d = 500;
+
+    var h_steps_size = 5;
+    var v_steps_size = 5;
     var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
     var nr_vertical_boxes = p1s["c-height"] / v_steps_size;
     var c_heatmap = document.getElementById("c_heatmap");
     var ctx = c_heatmap.getContext("2d");
     for (var i = 0; i < nr_vertical_boxes * v_steps_size; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
-        var color_rule = (i + 1) * (j + 1) % 255;
+        var color_rule = Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 1.5;
         var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
         ctx.fillStyle = color;
         ctx.fillRect(j, i, h_steps_size, v_steps_size);
-        j += h_steps_size;
+        j += h_steps_size - 1;
       }
-      i += 9;
+      i += v_steps_size - 1;
     }
     update_p1s();
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(j_d, i_d, 10, 0, Math.PI * 2);
+    ctx.fill();
   }
-  paint_background();
+  paint_heatmap();
 
   //Canvas
   var canvas = document.getElementById('c_heatmap');
@@ -85,6 +93,13 @@
 
   //Mouseup
   $(canvas).on('mouseup', function (e) {
+    ctx.beginPath();
+    ctx.moveTo(last_mousex, last_mousey);
+    ctx.lineTo(mousex, mousey);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 5;
+    ctx.lineJoin = ctx.lineCap = 'round';
+    ctx.stroke();
     mousedown = false;
   });
 
@@ -93,18 +108,12 @@
     mousex = parseInt(e.clientX - canvasx);
     mousey = parseInt(e.clientY - canvasy);
     if (mousedown) {
-      paint_background();
-      ctx.beginPath();
-      ctx.moveTo(last_mousex, last_mousey);
-      ctx.lineTo(mousex, mousey);
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 5;
-      ctx.lineJoin = ctx.lineCap = 'round';
-      ctx.stroke();
+      //paint_background();
     }
     //Output
-    $('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
+    //$('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
     p1s["current-x"] = mousex;
     p1s["current-y"] = mousey;
+    update_p1s();
   });
 </script>
