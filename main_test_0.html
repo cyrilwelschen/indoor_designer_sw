@@ -2,18 +2,14 @@
 <html>
 
 <head>
-  <script src="https://rawgit.com/kangax/fabric.js/master/dist/fabric.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 </head>
 
 <body>
 
   <div class="image-display">
-    <h1>Swisscom Indoor Designer</h1>
-    <button onclick="butF()">
-      Undo
-    </button>
-    <canvas id="c" width="1400" height="280" style="border:1px solid rgb(48, 29, 29)"></canvas>
-    <canvas id="c_heatmap" width="1400" height="280" style="border: 1px solid rgb(48,29,29);"></canvas>
+    <h1>Indoor Designer</h1>
+    <canvas id="c_heatmap" width="1400" height="500" style="border: 1px solid rgb(48,29,29);"></canvas>
   </div>
   <h3>Params 1</h3>
   <p id="params-1"></p>
@@ -36,7 +32,7 @@
 
 <script type="text/javascript">
 
-  var c = document.getElementById("c");
+  var c = document.getElementById("c_heatmap");
   var p1s = {
     "current-x": "0",
     "current-y": "0",
@@ -48,73 +44,67 @@
     var p1 = document.getElementById("params-1");
     p1.innerHTML = JSON.stringify(p1s);
   }
-  update_p1s();
-
-  var canvas = new fabric.Canvas('c', {
-    selection: false
-  });
 
   function paint_background() {
-    var h_steps_size = 20;
+    var h_steps_size = 10;
+    var v_steps_size = 10;
     var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
-    var nr_vertical_boxes = p1s["c-height"] / 10;
-    var r = 200;
-    var g = 50;
+    var nr_vertical_boxes = p1s["c-height"] / v_steps_size;
     var c_heatmap = document.getElementById("c_heatmap");
     var ctx = c_heatmap.getContext("2d");
-    for (var i = 0; i < nr_vertical_boxes * 10; i++) {
+    for (var i = 0; i < nr_vertical_boxes * v_steps_size; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
-        var color = "rgb(" + i * j % 230 + "," + i * j % 230 + ", " + i * j % 230 + ")";
-        var temp_rec = new fabric.Rect({ top: i, left: j, width: h_steps_size, height: 10, fill: color });
-        canvas.add(temp_rec);
+        var color_rule = (i + 1) * (j + 1) % 255;
+        var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
         ctx.fillStyle = color;
-        ctx.fillRect(j, i, h_steps_size, 10);
+        ctx.fillRect(j, i, h_steps_size, v_steps_size);
         j += h_steps_size;
       }
       i += 9;
     }
+    update_p1s();
   }
   paint_background();
 
-  var line, isDown;
+  //Canvas
+  var canvas = document.getElementById('c_heatmap');
+  var ctx = canvas.getContext('2d');
+  //Variables
+  var canvasx = $(canvas).offset().left;
+  var canvasy = $(canvas).offset().top;
+  var last_mousex = last_mousey = 0;
+  var mousex = mousey = 0;
+  var mousedown = false;
 
-  canvas.on('mouse:down', function (o) {
-    isDown = true;
-    var pointer = canvas.getPointer(o.e);
-    var points = [pointer.x, pointer.y, pointer.x, pointer.y];
-    line = new fabric.Line(points, {
-      strokeWidth: 5,
-      fill: 'black',
-      stroke: 'black',
-      originX: 'center',
-      originY: 'center'
-    });
-    canvas.add(line);
-    p1s["current-x"] = pointer.x;
-    p1s["current-y"] = pointer.y;
-    update_p1s();
+  //Mousedown
+  $(canvas).on('mousedown', function (e) {
+    last_mousex = parseInt(e.clientX - canvasx);
+    last_mousey = parseInt(e.clientY - canvasy);
+    mousedown = true;
   });
 
-  canvas.on('mouse:move', function (o) {
-    if (!isDown) return;
-    var pointer = canvas.getPointer(o.e);
-    line.set({
-      x2: pointer.x,
-      y2: pointer.y
-    });
-    canvas.renderAll();
+  //Mouseup
+  $(canvas).on('mouseup', function (e) {
+    mousedown = false;
   });
 
-  canvas.on('mouse:up', function (o) {
-    isDown = false;
-    var pointer = canvas.getPointer(o.e);
-    p1s["current-x"] = pointer.x;
-    p1s["current-y"] = pointer.y;
-    update_p1s();
+  //Mousemove
+  $(canvas).on('mousemove', function (e) {
+    mousex = parseInt(e.clientX - canvasx);
+    mousey = parseInt(e.clientY - canvasy);
+    if (mousedown) {
+      paint_background();
+      ctx.beginPath();
+      ctx.moveTo(last_mousex, last_mousey);
+      ctx.lineTo(mousex, mousey);
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 5;
+      ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    //Output
+    $('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
+    p1s["current-x"] = mousex;
+    p1s["current-y"] = mousey;
   });
-
-  function butF() {
-    canvas.remove(canvas.item(canvas.getObjects().length - 1));
-  };
-
 </script>
