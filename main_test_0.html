@@ -12,7 +12,8 @@
     <button onclick="butF()">
       Undo
     </button>
-    <canvas id="c" width="1400" height="600" style="border:1px solid rgb(48, 29, 29)"></canvas>
+    <canvas id="c" width="1400" height="280" style="border:1px solid rgb(48, 29, 29)"></canvas>
+    <canvas id="c_heatmap" width="1400" height="280" style="border: 1px solid rgb(48,29,29);"></canvas>
   </div>
   <h3>Params 1</h3>
   <p id="params-1"></p>
@@ -57,13 +58,17 @@
     var h_steps_size = 20;
     var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
     var nr_vertical_boxes = p1s["c-height"] / 10;
-    console.log(nr_vertical_boxes, nr_horizontal_boxes);
     var r = 200;
     var g = 50;
+    var c_heatmap = document.getElementById("c_heatmap");
+    var ctx = c_heatmap.getContext("2d");
     for (var i = 0; i < nr_vertical_boxes * 10; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
-        var temp_rec = new fabric.Rect({ top: i, left: j, width: h_steps_size, height: 10, fill: "rgb(" + r + "," + j % 230 + ", " + i % 230 + ")" });
+        var color = "rgb(" + i * j % 230 + "," + i * j % 230 + ", " + i * j % 230 + ")";
+        var temp_rec = new fabric.Rect({ top: i, left: j, width: h_steps_size, height: 10, fill: color });
         canvas.add(temp_rec);
+        ctx.fillStyle = color;
+        ctx.fillRect(j, i, h_steps_size, 10);
         j += h_steps_size;
       }
       i += 9;
