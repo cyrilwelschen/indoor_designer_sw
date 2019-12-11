@@ -73,7 +73,7 @@
     ctx.arc(j_d, i_d, r_d, 0, Math.PI * 2);
     ctx.fill();
   }
-  function paint_heatmap() {
+  function paint_heatmap(step_size = 7) {
 
     // todo: make calculation on all dots, not just last one
     for (var dot in dots) {
@@ -83,8 +83,8 @@
     }
     var r_d = 10;
 
-    var h_steps_size = 7;
-    var v_steps_size = 7;
+    var h_steps_size = step_size;
+    var v_steps_size = step_size;
     var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
     var nr_vertical_boxes = p1s["c-height"] / v_steps_size;
     var c_heatmap = document.getElementById("c_heatmap");
@@ -151,6 +151,7 @@
 
   var moving_dot = false;
   var last_wall_id = -1;
+  var time = Date.now();
 
   //Mousedown
   $(canvas).on('mousedown', function (e) {
@@ -160,6 +161,7 @@
     if (dot_hover) {
       // wait and see if dot is dragged
       moving_dot = true;
+      time = Date.now();
     } else {
       mousedown = true;
       last_wall_id += 1;
@@ -173,11 +175,12 @@
   $(canvas).on('mousemove', function (e) {
     mousex = parseInt(e.clientX - canvasx);
     mousey = parseInt(e.clientY - canvasy);
-    if (moving_dot) {
+    var elapsed = Date.now() - time;
+    if (moving_dot && elapsed > 10) {
       p1s["dots"][0]["x"] = mousex;
       p1s["dots"][0]["y"] = mousey;
       console.log("moving dot on move");
-      paint_heatmap();
+      paint_heatmap(step_size = 10);
     }
     //Output
     //$('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
@@ -207,7 +210,7 @@
       walls[walls.length - 1]["x1"] = mousex;
       walls[walls.length - 1]["y1"] = mousey;
     }
-    paint_heatmap();
+    paint_heatmap(step_size = 3);
     p1s["mousesstate"] = "up";
     update_p1s();
   });
