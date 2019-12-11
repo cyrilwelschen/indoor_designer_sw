@@ -10,8 +10,8 @@
   <div class="image-display">
     <h1>Indoor Designer</h1>
     <div>
-      <button id="paint_walls" onclick="setMode(this)">Walls</button>
-      <button id="move_dot" onclick="setMode(this)">Move Dot</button>
+      <button id="thick_wall" onclick="setMode(this)">Thick Wall</button>
+      <button id="thin_wall" onclick="setMode(this)">Thin Wall</button>
     </div>
     <div>
       <canvas id="c_heatmap" width="1000" height="600" style="border: 1px solid rgb(0,0,0);"></canvas>
@@ -39,7 +39,7 @@
 <script type="text/javascript">
 
   var c = document.getElementById("c_heatmap");
-  var mode = "paint_walls";
+  var wall_thickness = 3;
 
   var walls = [];
   var dots = [{ "id": 0, "x": 400, "y": 200 }];
@@ -49,7 +49,6 @@
     "c-width": c.clientWidth,
     "c-height": c.clientHeight,
     "mousesstate": "nothing yet",
-    "mode": mode,
     "dots": dots,
     "walls": walls,
   }
@@ -60,7 +59,14 @@
   }
 
   function setMode(obj) {
-    p1s["mode"] = obj.id;
+    switch (obj.id) {
+      case "thin_wall":
+        wall_thickness = 3;
+        break;
+      case "thick_wall":
+        wall_thickness = 10;
+        break;
+    }
     update_p1s();
     console.log("Setting mode: ", obj.id);
   }
@@ -112,9 +118,8 @@
           var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
           var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
           if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
-            color_rule += 25;
+            color_rule += 6 * w["thickness"];
           }
-          // End new wall effect
         }
         var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
         ctx.fillStyle = color;
@@ -129,7 +134,7 @@
       ctx.moveTo(w["x0"], w["y0"]);
       ctx.lineTo(w["x1"], w["y1"]);
       ctx.strokeStyle = 'yellow';
-      ctx.lineWidth = 5;
+      ctx.lineWidth = w["thickness"];
       ctx.lineJoin = ctx.lineCap = 'round';
       ctx.stroke();
     }
@@ -165,7 +170,7 @@
     } else {
       mousedown = true;
       last_wall_id += 1;
-      walls.push({ "id": last_wall_id, "x0": last_mousex, "y0": last_mousey });
+      walls.push({ "id": last_wall_id, "x0": last_mousex, "y0": last_mousey, "thickness": wall_thickness });
     }
     p1s["mousesstate"] = "down";
     update_p1s();
@@ -179,7 +184,6 @@
     if (moving_dot && elapsed > 10) {
       p1s["dots"][0]["x"] = mousex;
       p1s["dots"][0]["y"] = mousey;
-      console.log("moving dot on move");
       paint_heatmap(step_size = 10);
     }
     //Output
