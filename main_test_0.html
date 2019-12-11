@@ -9,7 +9,7 @@
 
   <div class="image-display">
     <h1>Indoor Designer</h1>
-    <canvas id="c_heatmap" width="1400" height="500" style="border: 1px solid rgb(48,29,29);"></canvas>
+    <canvas id="c_heatmap" width="800" height="400" style="border: 1px solid rgb(0,0,0);"></canvas>
   </div>
   <h3>Params 1</h3>
   <p id="params-1"></p>
@@ -33,12 +33,15 @@
 <script type="text/javascript">
 
   var c = document.getElementById("c_heatmap");
+
+  var walls = [];
   var p1s = {
     "current-x": "0",
     "current-y": "0",
     "c-width": c.clientWidth,
     "c-height": c.clientHeight,
-    "mousesstate": "nothing yet"
+    "mousesstate": "nothing yet",
+    "walls": walls
   }
 
   function update_p1s() {
@@ -47,24 +50,60 @@
   }
 
   function paint_heatmap() {
-    var i_d = 100,
+    var i_d = 200,
       j_d = 400;
 
-    var h_steps_size = 5;
-    var v_steps_size = 5;
+    var h_steps_size = 2;
+    var v_steps_size = 2;
     var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
     var nr_vertical_boxes = p1s["c-height"] / v_steps_size;
     var c_heatmap = document.getElementById("c_heatmap");
     var ctx = c_heatmap.getContext("2d");
     for (var i = 0; i < nr_vertical_boxes * v_steps_size; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
-        var color_rule = Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 1.5;
-        var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
-        ctx.fillStyle = color;
-        ctx.fillRect(j, i, h_steps_size, v_steps_size);
+        var il = i - i_d;
+        var jl = j - j_d;
+        var kl = i_d * j - i * j_d;
+        var lx_min = Math.min(j, j_d);
+        var lx_max = Math.max(j, j_d);
+        var ly_min = Math.min(i, i_d);
+        var ly_max = Math.max(i, i_d);
+        for (var wall in walls) {
+          var w = walls[wall];
+          var iw = w["y1"] - w["y0"];
+          var jw = w["x1"] - w["x0"];
+          var kw = w["y0"] * w["x1"] - w["y1"] * w["x0"];
+          var wx_min = Math.min(w["x0"], w["x1"]);
+          var wx_max = Math.max(w["x0"], w["x1"]);
+          var wy_min = Math.min(w["y0"], w["y1"]);
+          var wy_max = Math.max(w["y0"], w["y1"]);
+          var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
+          var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
+          if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min < x_I && x_I < lx_max && ly_min < y_I && y_I < ly_max && wx_min < x_I && x_I < wx_max && wy_min < y_I && y_I < wy_max) {
+            var p1 = Math.sqrt(Math.pow(i - x_I, 2) + Math.pow(j - y_I, 2)) / 5 * 1.5;
+            var p2 = Math.sqrt(Math.pow(x_I - i_d, 2) + Math.pow(y_I - j_d, 2)) / 5;
+            var color_rule = 255;
+          } else {
+            var color_rule = Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 4;
+          }
+          // End new wall effect
+          var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
+          ctx.fillStyle = color;
+          ctx.fillRect(j, i, h_steps_size, v_steps_size);
+        }
         j += h_steps_size - 1;
       }
       i += v_steps_size - 1;
+    }
+    for (var wall in walls) {
+      var w = walls[wall];
+      ctx.beginPath();
+      ctx.moveTo(w["x0"], w["y0"]);
+      ctx.lineTo(w["x1"], w["y1"]);
+      ctx.strokeStyle = 'green';
+      ctx.lineWidth = 5;
+      ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.stroke();
     }
     update_p1s();
     ctx.fillStyle = "red";
@@ -84,11 +123,17 @@
   var mousex = mousey = 0;
   var mousedown = false;
 
+  var last_wall_id = -1;
+
   //Mousedown
   $(canvas).on('mousedown', function (e) {
     last_mousex = parseInt(e.clientX - canvasx);
     last_mousey = parseInt(e.clientY - canvasy);
     mousedown = true;
+    last_wall_id += 1;
+    walls.push({ "id": last_wall_id, "x0": last_mousex, "y0": last_mousey });
+    p1s["mousesstate"] = "down";
+    update_p1s();
   });
 
   //Mouseup
@@ -101,6 +146,11 @@
     ctx.lineJoin = ctx.lineCap = 'round';
     ctx.stroke();
     mousedown = false;
+    walls[walls.length - 1]["x1"] = mousex;
+    walls[walls.length - 1]["y1"] = mousey;
+    p1s["mousesstate"] = "up";
+    update_p1s();
+    paint_heatmap();
   });
 
   //Mousemove
@@ -114,6 +164,7 @@
     //$('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
     p1s["current-x"] = mousex;
     p1s["current-y"] = mousey;
+    p1s["mousesstate"] = "move";
     update_p1s();
   });
 </script>
