@@ -51,7 +51,7 @@
 
   function paint_heatmap() {
     var i_d = 200,
-      j_d = 400;
+      j_d = 200;
 
     var h_steps_size = 2;
     var v_steps_size = 2;
@@ -68,6 +68,8 @@
         var lx_max = Math.max(j, j_d);
         var ly_min = Math.min(i, i_d);
         var ly_max = Math.max(i, i_d);
+        // value if no walls are in between
+        var color_rule = Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 4;
         for (var wall in walls) {
           var w = walls[wall];
           var iw = w["y1"] - w["y0"];
@@ -80,17 +82,13 @@
           var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
           var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
           if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
-            var p1 = Math.sqrt(Math.pow(i - x_I, 2) + Math.pow(j - y_I, 2)) / 5 * 1.5;
-            var p2 = Math.sqrt(Math.pow(x_I - i_d, 2) + Math.pow(y_I - j_d, 2)) / 5;
-            var color_rule = 255;
-          } else {
-            var color_rule = Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 4;
+            color_rule += 25;
           }
           // End new wall effect
-          var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
-          ctx.fillStyle = color;
-          ctx.fillRect(j, i, h_steps_size, v_steps_size);
         }
+        var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
+        ctx.fillStyle = color;
+        ctx.fillRect(j, i, h_steps_size, v_steps_size);
         j += h_steps_size - 1;
       }
       i += v_steps_size - 1;
