@@ -147,6 +147,7 @@
   var last_mousex = last_mousey = 0;
   var mousex = mousey = 0;
   var mousedown = false;
+  var dot_hover = false;
 
   var moving_dot = false;
   var last_wall_id = -1;
@@ -155,8 +156,7 @@
   $(canvas).on('mousedown', function (e) {
     last_mousex = parseInt(e.clientX - canvasx);
     last_mousey = parseInt(e.clientY - canvasy);
-    var dot_hover = hoveringDot(last_mousex, last_mousey);
-    console.log("hovering: ", dot_hover);
+    dot_hover = hoveringDot(last_mousex, last_mousey);
     if (dot_hover) {
       // wait and see if dot is dragged
       moving_dot = true;
@@ -173,6 +173,12 @@
   $(canvas).on('mousemove', function (e) {
     mousex = parseInt(e.clientX - canvasx);
     mousey = parseInt(e.clientY - canvasy);
+    if (moving_dot) {
+      p1s["dots"][0]["x"] = mousex;
+      p1s["dots"][0]["y"] = mousey;
+      console.log("moving dot on move");
+      paint_heatmap();
+    }
     //Output
     //$('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
     p1s["current-x"] = mousex;
@@ -183,11 +189,12 @@
 
   //Mouseup
   $(canvas).on('mouseup', function (e) {
-    if (hoveringDot(last_mousex, last_mousey)) {
+    if (dot_hover) {
       //repaint dot
       p1s["dots"][0]["x"] = mousex;
       p1s["dots"][0]["y"] = mousey;
       moving_dot = false;
+      dot_hover = false;
     } else {
       ctx.beginPath();
       ctx.moveTo(last_mousex, last_mousey);
