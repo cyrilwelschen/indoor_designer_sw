@@ -12,9 +12,10 @@
     <div>
       <button id="thick_wall" onclick="setMode(this)">Thick Wall</button>
       <button id="thin_wall" onclick="setMode(this)">Thin Wall</button>
+      <button id="add_dot_button" onclick="addDot(this)">Add Dot</button>
     </div>
     <div>
-      <canvas id="c_heatmap" width="1000" height="600" style="border: 1px solid rgb(0,0,0);"></canvas>
+      <canvas id="c_heatmap" width="1400" height="800" style="border: 1px solid rgb(0,0,0);"></canvas>
     </div>
   </div>
   <h3>Params 1</h3>
@@ -43,6 +44,8 @@
 
   var walls = [];
   var dots = [{ "id": 0, "x": 400, "y": 200 }];
+  var next_dot_id = 1;
+  var hovering_dot_id = false;
   var p1s = {
     "current-x": "0",
     "current-y": "0",
@@ -79,14 +82,22 @@
     ctx.arc(j_d, i_d, r_d, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  function dbmToColor(dbm) {
+    var temp = -255 / 80 * (20 + dbm);
+    if (temp < 0) {
+      return 0;
+    } else if (temp > 255) {
+      return 255;
+    } else {
+      return temp;
+    }
+  }
+  const db_start = 20 * Math.log10(2.6) + 92.45;
+
   function paint_heatmap(step_size = 7) {
 
     // todo: make calculation on all dots, not just last one
-    for (var dot in dots) {
-      var d = dots[dot];
-      var i_d = d["y"],
-        j_d = d["x"];
-    }
     var r_d = 10;
 
     var h_steps_size = step_size;
@@ -97,30 +108,41 @@
     var ctx = c_heatmap.getContext("2d");
     for (var i = 0; i < nr_vertical_boxes * v_steps_size; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
-        var il = i - i_d;
-        var jl = j - j_d;
-        var kl = i_d * j - i * j_d;
-        var lx_min = Math.min(j, j_d);
-        var lx_max = Math.max(j, j_d);
-        var ly_min = Math.min(i, i_d);
-        var ly_max = Math.max(i, i_d);
-        // value if no walls are in between
-        var color_rule = Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 4;
-        for (var wall in walls) {
-          var w = walls[wall];
-          var iw = w["y1"] - w["y0"];
-          var jw = w["x1"] - w["x0"];
-          var kw = w["y0"] * w["x1"] - w["y1"] * w["x0"];
-          var wx_min = Math.min(w["x0"], w["x1"]);
-          var wx_max = Math.max(w["x0"], w["x1"]);
-          var wy_min = Math.min(w["y0"], w["y1"]);
-          var wy_max = Math.max(w["y0"], w["y1"]);
-          var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
-          var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
-          if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
-            color_rule += 6 * w["thickness"];
+        var color_rule = -10000;
+        for (var dot in dots) {
+          var d = dots[dot];
+          var i_d = d["y"],
+            j_d = d["x"];
+          var il = i - i_d;
+          var jl = j - j_d;
+          var kl = i_d * j - i * j_d;
+          var lx_min = Math.min(j, j_d);
+          var lx_max = Math.max(j, j_d);
+          var ly_min = Math.min(i, i_d);
+          var ly_max = Math.max(i, i_d);
+          // value if no walls are in between
+          var color_rule_this_dot = 17 - (20 * Math.log10(Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 20000) + db_start);
+          for (var wall in walls) {
+            var w = walls[wall];
+            var iw = w["y1"] - w["y0"];
+            var jw = w["x1"] - w["x0"];
+            var kw = w["y0"] * w["x1"] - w["y1"] * w["x0"];
+            var wx_min = Math.min(w["x0"], w["x1"]);
+            var wx_max = Math.max(w["x0"], w["x1"]);
+            var wy_min = Math.min(w["y0"], w["y1"]);
+            var wy_max = Math.max(w["y0"], w["y1"]);
+            var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
+            var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
+            if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
+              color_rule_this_dot -= 2 * w["thickness"];
+            }
+          }
+          if (color_rule_this_dot > color_rule) {
+            color_rule = color_rule_this_dot;
           }
         }
+        var dbm = color_rule;
+        color_rule = dbmToColor(dbm);
         var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
         ctx.fillStyle = color;
         ctx.fillRect(j, i, h_steps_size, v_steps_size);
@@ -128,6 +150,7 @@
       }
       i += v_steps_size - 1;
     }
+    // draw walls
     for (var wall in walls) {
       var w = walls[wall];
       ctx.beginPath();
@@ -138,10 +161,21 @@
       ctx.lineJoin = ctx.lineCap = 'round';
       ctx.stroke();
     }
-    paint_dot(j_d, i_d, r_d);
+    // draw dots
+    for (var dot in dots) {
+      var d = dots[dot];
+      paint_dot(d["x"], d["y"], r_d);
+    }
     update_p1s();
   }
+
   paint_heatmap();
+
+  function addDot(obj) {
+    dots.push({ "id": next_dot_id, "x": 40, "y": 40 });
+    next_dot_id += 1;
+    paint_heatmap(step_size = 3);
+  }
 
   //Canvas
   var canvas = document.getElementById('c_heatmap');
@@ -182,8 +216,8 @@
     mousey = parseInt(e.clientY - canvasy);
     var elapsed = Date.now() - time;
     if (moving_dot && elapsed > 10) {
-      p1s["dots"][0]["x"] = mousex;
-      p1s["dots"][0]["y"] = mousey;
+      p1s["dots"][hovering_dot_id]["x"] = mousex;
+      p1s["dots"][hovering_dot_id]["y"] = mousey;
       paint_heatmap(step_size = 10);
     }
     //Output
@@ -198,8 +232,8 @@
   $(canvas).on('mouseup', function (e) {
     if (dot_hover) {
       //repaint dot
-      p1s["dots"][0]["x"] = mousex;
-      p1s["dots"][0]["y"] = mousey;
+      p1s["dots"][hovering_dot_id]["x"] = mousex;
+      p1s["dots"][hovering_dot_id]["y"] = mousey;
       moving_dot = false;
       dot_hover = false;
     } else {
@@ -220,11 +254,13 @@
   });
 
   function hoveringDot(x, y) {
-    var d = dots[0];
-    if (Math.sqrt(Math.pow(x - d["x"], 2) + Math.pow(y - d["y"], 2)) < 10) {
-      return true;
-    } else {
-      return false;
+    for (var dot in dots) {
+      var d = dots[dot];
+      if (Math.sqrt(Math.pow(x - d["x"], 2) + Math.pow(y - d["y"], 2)) < 10) {
+        hovering_dot_id = d["id"];
+        return true;
+      }
     }
+    return false;
   }
 </script>
