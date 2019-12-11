@@ -79,7 +79,7 @@
           var wy_max = Math.max(w["y0"], w["y1"]);
           var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
           var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
-          if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min < x_I && x_I < lx_max && ly_min < y_I && y_I < ly_max && wx_min < x_I && x_I < wx_max && wy_min < y_I && y_I < wy_max) {
+          if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
             var p1 = Math.sqrt(Math.pow(i - x_I, 2) + Math.pow(j - y_I, 2)) / 5 * 1.5;
             var p2 = Math.sqrt(Math.pow(x_I - i_d, 2) + Math.pow(y_I - j_d, 2)) / 5;
             var color_rule = 255;
