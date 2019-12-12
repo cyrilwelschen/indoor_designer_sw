@@ -122,11 +122,6 @@
               var slope_l = il / jl;
               var slope_w = iw / jw;
               var angle = Math.atan((slope_l - slope_w) / (1 + (slope_l * slope_w)));
-              /*
-              if (angle > Math.PI / 2) {
-                angle -= Math.PI / 2;
-              }
-              */
               dbm_this_dot -= w["thickness"] / angle ** 2;
             }
           }
