@@ -6,7 +6,6 @@
 </head>
 
 <body>
-
   <div class="image-display">
     <h1>Indoor Designer</h1>
     <div>
@@ -29,32 +28,28 @@
     text-align: center;
     position: relative;
   }
-
-  #c {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-  }
 </style>
 
 <script type="text/javascript">
 
   var c = document.getElementById("c_heatmap");
-  var wall_thickness = 3;
+  var ctx = c.getContext("2d");
 
   var walls = [];
+  var wall_thickness = 3;
   var dots = [{ "id": 0, "x": 400, "y": 200 }];
+  var r_d = 10;
   var next_dot_id = 1;
   var hovering_dot_id = false;
   var p1s = {
     "current-x": "0",
     "current-y": "0",
-    "c-width": c.clientWidth,
-    "c-height": c.clientHeight,
     "mousesstate": "nothing yet",
     "dots": dots,
     "walls": walls,
   }
+
+  const db_start = 20 * Math.log10(2.6) + 92.45;
 
   function update_p1s() {
     var p1 = document.getElementById("params-1");
@@ -71,12 +66,9 @@
         break;
     }
     update_p1s();
-    console.log("Setting mode: ", obj.id);
   }
 
   function paint_dot(j_d, i_d, r_d) {
-    var c_heatmap = document.getElementById("c_heatmap");
-    var ctx = c_heatmap.getContext("2d");
     ctx.fillStyle = "red";
     ctx.beginPath();
     ctx.arc(j_d, i_d, r_d, 0, Math.PI * 2);
@@ -93,22 +85,15 @@
       return temp;
     }
   }
-  const db_start = 20 * Math.log10(2.6) + 92.45;
 
   function paint_heatmap(step_size = 7) {
-
     // todo: make calculation on all dots, not just last one
-    var r_d = 10;
-
-    var h_steps_size = step_size;
-    var v_steps_size = step_size;
-    var nr_horizontal_boxes = p1s["c-width"] / h_steps_size;
-    var nr_vertical_boxes = p1s["c-height"] / v_steps_size;
-    var c_heatmap = document.getElementById("c_heatmap");
-    var ctx = c_heatmap.getContext("2d");
+    var h_steps_size = v_steps_size = step_size;
+    var nr_horizontal_boxes = c.clientWidth / h_steps_size;
+    var nr_vertical_boxes = c.clientHeight / v_steps_size;
     for (var i = 0; i < nr_vertical_boxes * v_steps_size; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
-        var color_rule = -10000;
+        var dbm = -10000;
         for (var dot in dots) {
           var d = dots[dot];
           var i_d = d["y"],
@@ -121,7 +106,7 @@
           var ly_min = Math.min(i, i_d);
           var ly_max = Math.max(i, i_d);
           // value if no walls are in between
-          var color_rule_this_dot = 17 - (20 * Math.log10(Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 20000) + db_start);
+          var dbm_this_dot = 17 - (20 * Math.log10(Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 20000) + db_start);
           for (var wall in walls) {
             var w = walls[wall];
             var iw = w["y1"] - w["y0"];
@@ -134,17 +119,15 @@
             var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
             var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
             if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
-              color_rule_this_dot -= 2 * w["thickness"];
+              dbm_this_dot -= 2 * w["thickness"];
             }
           }
-          if (color_rule_this_dot > color_rule) {
-            color_rule = color_rule_this_dot;
+          if (dbm_this_dot > dbm) {
+            dbm = dbm_this_dot;
           }
         }
-        var dbm = color_rule;
-        color_rule = dbmToColor(dbm);
-        var color = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
-        ctx.fillStyle = color;
+        var color_rule = dbmToColor(dbm);
+        ctx.fillStyle = "rgb(" + color_rule + "," + color_rule + ", " + color_rule + ")";
         ctx.fillRect(j, i, h_steps_size, v_steps_size);
         j += h_steps_size - 1;
       }
@@ -177,12 +160,9 @@
     paint_heatmap(step_size = 3);
   }
 
-  //Canvas
-  var canvas = document.getElementById('c_heatmap');
-  var ctx = canvas.getContext('2d');
   //Variables
-  var canvasx = $(canvas).offset().left;
-  var canvasy = $(canvas).offset().top;
+  var canvasx = $(c).offset().left;
+  var canvasy = $(c).offset().top;
   var last_mousex = last_mousey = 0;
   var mousex = mousey = 0;
   var mousedown = false;
@@ -193,7 +173,7 @@
   var time = Date.now();
 
   //Mousedown
-  $(canvas).on('mousedown', function (e) {
+  $(c).on('mousedown', function (e) {
     last_mousex = parseInt(e.clientX - canvasx);
     last_mousey = parseInt(e.clientY - canvasy);
     dot_hover = hoveringDot(last_mousex, last_mousey);
@@ -211,7 +191,7 @@
   });
 
   //Mousemove
-  $(canvas).on('mousemove', function (e) {
+  $(c).on('mousemove', function (e) {
     mousex = parseInt(e.clientX - canvasx);
     mousey = parseInt(e.clientY - canvasy);
     var elapsed = Date.now() - time;
@@ -220,8 +200,6 @@
       p1s["dots"][hovering_dot_id]["y"] = mousey;
       paint_heatmap(step_size = 10);
     }
-    //Output
-    //$('#output').html('current: ' + mousex + ', ' + mousey + '<br/>last: ' + last_mousex + ', ' + last_mousey + '<br/>mousedown: ' + mousedown);
     p1s["current-x"] = mousex;
     p1s["current-y"] = mousey;
     p1s["mousesstate"] = "move";
@@ -229,7 +207,7 @@
   });
 
   //Mouseup
-  $(canvas).on('mouseup', function (e) {
+  $(c).on('mouseup', function (e) {
     if (dot_hover) {
       //repaint dot
       p1s["dots"][hovering_dot_id]["x"] = mousex;
@@ -237,13 +215,6 @@
       moving_dot = false;
       dot_hover = false;
     } else {
-      ctx.beginPath();
-      ctx.moveTo(last_mousex, last_mousey);
-      ctx.lineTo(mousex, mousey);
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 5;
-      ctx.lineJoin = ctx.lineCap = 'round';
-      ctx.stroke();
       mousedown = false;
       walls[walls.length - 1]["x1"] = mousex;
       walls[walls.length - 1]["y1"] = mousey;
