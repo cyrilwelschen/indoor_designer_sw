@@ -14,7 +14,7 @@
       <button id="add_dot_button" onclick="addDot(this)">Add Dot</button>
     </div>
     <div>
-      <canvas id="c_heatmap" width="1400" height="800" style="border: 1px solid rgb(0,0,0);"></canvas>
+      <canvas id="c_heatmap" width="1000" height="1000" style="border: 1px solid rgb(0,0,0);"></canvas>
     </div>
   </div>
   <h3>Params 1</h3>
@@ -31,16 +31,15 @@
 </style>
 
 <script type="text/javascript">
-
   var c = document.getElementById("c_heatmap");
   var ctx = c.getContext("2d");
-
   var walls = [];
   var wall_thickness = 3;
-  var dots = [{ "id": 0, "x": 400, "y": 200 }];
+  var dots = [{ "id": 0, "x": 500, "y": 500 }];
   var r_d = 10;
   var next_dot_id = 1;
   var hovering_dot_id = false;
+  const db_start = 20 * Math.log10(2.6) + 92.45;
   var p1s = {
     "current-x": "0",
     "current-y": "0",
@@ -48,8 +47,6 @@
     "dots": dots,
     "walls": walls,
   }
-
-  const db_start = 20 * Math.log10(2.6) + 92.45;
 
   function update_p1s() {
     var p1 = document.getElementById("params-1");
@@ -91,6 +88,7 @@
     var h_steps_size = v_steps_size = step_size;
     var nr_horizontal_boxes = c.clientWidth / h_steps_size;
     var nr_vertical_boxes = c.clientHeight / v_steps_size;
+
     for (var i = 0; i < nr_vertical_boxes * v_steps_size; i++) {
       for (var j = 0; j < nr_horizontal_boxes * h_steps_size; j++) {
         var dbm = -10000;
@@ -107,6 +105,7 @@
           var ly_max = Math.max(i, i_d);
           // value if no walls are in between
           var dbm_this_dot = 17 - (20 * Math.log10(Math.sqrt(Math.pow(i - i_d, 2) + Math.pow(j - j_d, 2)) / 20000) + db_start);
+
           for (var wall in walls) {
             var w = walls[wall];
             var iw = w["y1"] - w["y0"];
@@ -126,6 +125,7 @@
               dbm_this_dot -= w["thickness"] / angle ** 2;
             }
           }
+
           if (dbm_this_dot > dbm) {
             dbm = dbm_this_dot;
           }
@@ -137,6 +137,7 @@
       }
       i += v_steps_size - 1;
     }
+
     // draw walls
     for (var wall in walls) {
       var w = walls[wall];
@@ -176,17 +177,28 @@
     return dirs;
   }
 
+  function draw_helper_line(x0, y0, x1, y1) {
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
   function paint_raymap(step_size = 7) {
     // todo: make calculation on all dots, not just last one
     var h_steps_size = v_steps_size = step_size;
     var nr_horizontal_boxes = c.clientWidth / h_steps_size;
     var nr_vertical_boxes = c.clientHeight / v_steps_size;
     var dbm = -10000;
+
     for (var dot in dots) {
       var d = dots[dot];
       var i_d = d["y"],
         j_d = d["x"];
-      var initial_dirs = initDirs(j_d, i_d, 50);
+      var initial_dirs = initDirs(j_d, i_d, 15);
+
       for (var dir in initial_dirs) {
         var j = initial_dirs[dir][0],
           i = initial_dirs[dir][1];
@@ -200,9 +212,11 @@
         var ly_max = Math.max(i, i_d);
         var x_I_current = y_I_current = 0;
         var current_angle = 0;
+        var current_x_angle = 0;
         var dist_dummy = 100000;
         var dist_min = dist_dummy;
         var min_wall = 0;
+
         for (var wall in walls) {
           var w = walls[wall];
           var iw = w["y1"] - w["y0"];
@@ -216,6 +230,7 @@
           var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
           var d_dir_I = Math.sqrt(Math.pow(x_I - j, 2) + Math.pow(y_I - i, 2));
           var d_dir_dot = Math.sqrt(Math.pow(j - j_d, 2) + Math.pow(i - i_d, 2));
+
           if (wx_min < x_I && x_I < wx_max && wy_min < y_I && y_I < wy_max && d_dir_I < d_dir_dot) {
             var current_dist = Math.sqrt(Math.pow(x_I - j_d, 2) + Math.pow(y_I - i_d, 2));
             if (current_dist < dist_min) {
@@ -224,16 +239,19 @@
               y_I_current = y_I;
               var slope_l = il / jl;
               var slope_w = iw / jw;
+              console.log("direction x,y: ", j, i);
+              console.log("slope line: ", slope_l);
+              console.log("slope wall: ", slope_w);
               var angle_between_line = Math.atan((slope_w - slope_l) / (1 + (slope_l * slope_w)));
-              var angle_wall_coord_axes = Math.atan(slope_w);
-              if (slope_l > 0) {
-                current_angle = angle_between_line + angle_wall_coord_axes + Math.PI;
-              } else {
-                current_angle = angle_between_line + angle_wall_coord_axes;
-              }
+              console.log("angle: ", angle_between_line / Math.PI * 180);
+              console.log("   ");
+              var angle_wall_coord_x_axes = Math.atan(slope_w);
+              current_angle = angle_between_line;
+              current_x_angle = angle_wall_coord_x_axes;
             }
           }
         }
+
         if (dist_min < dist_dummy) {
           //paint dot line for now
           ctx.beginPath();
@@ -243,19 +261,46 @@
           ctx.lineWidth = 5;
           ctx.stroke();
           // paint reflection line
-          ctx.beginPath();
-          ctx.moveTo(x_I_current, y_I_current);
-          var inf_points = direction_points(x_I_current, y_I_current, current_angle);
+          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle);
           var x_reflect_inf = inf_points[0];
           var y_reflect_inf = inf_points[1];
-          console.log("x_inf, y_inf: ", x_reflect_inf, y_reflect_inf);
-          ctx.lineTo(x_reflect_inf, y_reflect_inf);
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 4;
-          ctx.stroke();
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          /*
+          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle - current_angle);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          */
+          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle + Math.PI);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          /*
+          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle - current_angle + Math.PI);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle + current_angle);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle - current_angle);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle + current_angle + Math.PI);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle - current_angle + Math.PI);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          */
         }
       }
     }
+
     // draw walls
     for (var wall in walls) {
       var w = walls[wall];
@@ -274,7 +319,6 @@
     }
     update_p1s();
   }
-
   paint_raymap();
 
   function addDot(obj) {
@@ -290,7 +334,6 @@
   var mousex = mousey = 0;
   var mousedown = false;
   var dot_hover = false;
-
   var moving_dot = false;
   var last_wall_id = -1;
   var time = Date.now();
