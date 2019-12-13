@@ -121,6 +121,7 @@
             if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
               var slope_l = il / jl;
               var slope_w = iw / jw;
+              // todo: angle maybe wrong, see raymap function below
               var angle = Math.atan((slope_l - slope_w) / (1 + (slope_l * slope_w)));
               dbm_this_dot -= w["thickness"] / angle ** 2;
             }
@@ -155,12 +156,131 @@
     update_p1s();
   }
 
-  paint_heatmap();
+
+  function direction_points(x, y, angle) {
+    // return an arbitrary point in the wright direction from starting point
+    // x, y are coordinates of starting point
+    var distance = 2000;
+    return [x + Math.cos(angle) * distance, y + Math.sin(angle) * distance];
+  }
+
+  function initDirs(x, y, num) {
+    var angles = [];
+    for (var i = 1; i <= num; i++) {
+      angles.push((2 * i * Math.PI / num));
+    }
+    var dirs = [];
+    for (var a in angles) {
+      dirs.push(direction_points(x, y, angles[a]));
+    }
+    return dirs;
+  }
+
+  function paint_raymap(step_size = 7) {
+    // todo: make calculation on all dots, not just last one
+    var h_steps_size = v_steps_size = step_size;
+    var nr_horizontal_boxes = c.clientWidth / h_steps_size;
+    var nr_vertical_boxes = c.clientHeight / v_steps_size;
+    var dbm = -10000;
+    for (var dot in dots) {
+      var d = dots[dot];
+      var i_d = d["y"],
+        j_d = d["x"];
+      var initial_dirs = initDirs(j_d, i_d, 50);
+      for (var dir in initial_dirs) {
+        var j = initial_dirs[dir][0],
+          i = initial_dirs[dir][1];
+        // ctx.fillRect(j, i, h_steps_size, v_steps_size);
+        var il = i - i_d;
+        var jl = j - j_d;
+        var kl = i_d * j - i * j_d;
+        var lx_min = Math.min(j, j_d);
+        var lx_max = Math.max(j, j_d);
+        var ly_min = Math.min(i, i_d);
+        var ly_max = Math.max(i, i_d);
+        var x_I_current = y_I_current = 0;
+        var current_angle = 0;
+        var dist_dummy = 100000;
+        var dist_min = dist_dummy;
+        var min_wall = 0;
+        for (var wall in walls) {
+          var w = walls[wall];
+          var iw = w["y1"] - w["y0"];
+          var jw = w["x1"] - w["x0"];
+          var kw = w["y0"] * w["x1"] - w["y1"] * w["x0"];
+          var wx_min = Math.min(w["x0"], w["x1"]);
+          var wx_max = Math.max(w["x0"], w["x1"]);
+          var wy_min = Math.min(w["y0"], w["y1"]);
+          var wy_max = Math.max(w["y0"], w["y1"]);
+          var x_I = (kw * jl - kl * jw) / (il * jw - iw * jl);
+          var y_I = (kw * il - kl * iw) / (il * jw - iw * jl);
+          var d_dir_I = Math.sqrt(Math.pow(x_I - j, 2) + Math.pow(y_I - i, 2));
+          var d_dir_dot = Math.sqrt(Math.pow(j - j_d, 2) + Math.pow(i - i_d, 2));
+          if (wx_min < x_I && x_I < wx_max && wy_min < y_I && y_I < wy_max && d_dir_I < d_dir_dot) {
+            var current_dist = Math.sqrt(Math.pow(x_I - j_d, 2) + Math.pow(y_I - i_d, 2));
+            if (current_dist < dist_min) {
+              dist_min = current_dist;
+              x_I_current = x_I;
+              y_I_current = y_I;
+              var slope_l = il / jl;
+              var slope_w = iw / jw;
+              var angle_between_line = Math.atan((slope_w - slope_l) / (1 + (slope_l * slope_w)));
+              var angle_wall_coord_axes = Math.atan(slope_w);
+              if (slope_l > 0) {
+                current_angle = angle_between_line + angle_wall_coord_axes + Math.PI;
+              } else {
+                current_angle = angle_between_line + angle_wall_coord_axes;
+              }
+            }
+          }
+        }
+        if (dist_min < dist_dummy) {
+          //paint dot line for now
+          ctx.beginPath();
+          ctx.moveTo(x_I_current, y_I_current);
+          ctx.lineTo(j_d, i_d);
+          ctx.strokeStyle = 'green';
+          ctx.lineWidth = 5;
+          ctx.stroke();
+          // paint reflection line
+          ctx.beginPath();
+          ctx.moveTo(x_I_current, y_I_current);
+          var inf_points = direction_points(x_I_current, y_I_current, current_angle);
+          var x_reflect_inf = inf_points[0];
+          var y_reflect_inf = inf_points[1];
+          console.log("x_inf, y_inf: ", x_reflect_inf, y_reflect_inf);
+          ctx.lineTo(x_reflect_inf, y_reflect_inf);
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+        }
+      }
+    }
+    // draw walls
+    for (var wall in walls) {
+      var w = walls[wall];
+      ctx.beginPath();
+      ctx.moveTo(w["x0"], w["y0"]);
+      ctx.lineTo(w["x1"], w["y1"]);
+      ctx.strokeStyle = 'yellow';
+      ctx.lineWidth = w["thickness"];
+      ctx.lineJoin = ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    // draw dots
+    for (var dot in dots) {
+      var d = dots[dot];
+      paint_dot(d["x"], d["y"], r_d);
+    }
+    update_p1s();
+  }
+
+  paint_raymap();
 
   function addDot(obj) {
     dots.push({ "id": next_dot_id, "x": 40, "y": 40 });
     next_dot_id += 1;
-    paint_heatmap(step_size = 3);
+    paint_raymap(step_size = 3);
   }
 
   //Variables
@@ -222,7 +342,7 @@
       walls[walls.length - 1]["x1"] = mousex;
       walls[walls.length - 1]["y1"] = mousey;
     }
-    paint_heatmap(step_size = 3);
+    paint_raymap(step_size = 3);
     p1s["mousesstate"] = "up";
     update_p1s();
   });
