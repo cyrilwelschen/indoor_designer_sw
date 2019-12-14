@@ -14,7 +14,7 @@
       <button id="add_dot_button" onclick="addDot(this)">Add Dot</button>
     </div>
     <div>
-      <canvas id="c_heatmap" width="1000" height="1000" style="border: 1px solid rgb(0,0,0);"></canvas>
+      <canvas id="c_heatmap" width="700" height="700" style="border: 1px solid rgb(0,0,0);"></canvas>
     </div>
   </div>
   <h3>Params 1</h3>
@@ -35,7 +35,7 @@
   var ctx = c.getContext("2d");
   var walls = [];
   var wall_thickness = 3;
-  var dots = [{ "id": 0, "x": 500, "y": 500 }];
+  var dots = [{ "id": 0, "x": 350, "y": 350 }];
   var r_d = 10;
   var next_dot_id = 1;
   var hovering_dot_id = false;
@@ -177,12 +177,12 @@
     return dirs;
   }
 
-  function draw_helper_line(x0, y0, x1, y1) {
+  function draw_helper_line(x0, y0, x1, y1, width = 0.5) {
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
     ctx.strokeStyle = 'black';
-    ctx.lineWidth = 0.5;
+    ctx.lineWidth = width;
     ctx.stroke();
   }
 
@@ -239,15 +239,23 @@
               y_I_current = y_I;
               var slope_l = il / jl;
               var slope_w = iw / jw;
-              console.log("direction x,y: ", j, i);
-              console.log("slope line: ", slope_l);
-              console.log("slope wall: ", slope_w);
               var angle_between_line = Math.atan((slope_w - slope_l) / (1 + (slope_l * slope_w)));
-              console.log("angle: ", angle_between_line / Math.PI * 180);
-              console.log("   ");
               var angle_wall_coord_x_axes = Math.atan(slope_w);
               current_angle = angle_between_line;
               current_x_angle = angle_wall_coord_x_axes;
+              var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle);
+              var x_inf = inf_points[0];
+              var y_inf = inf_points[1];
+              var ii = y_inf - i_d;
+              var ji = x_inf - j_d;
+              var ki = i_d * x_inf - y_inf * j_d;
+              var x_I2 = (kw * ji - ki * jw) / (ii * jw - iw * ji);
+              var y_I2 = (kw * ii - ki * iw) / (ii * jw - iw * ji);
+              var d_inf_dot = Math.sqrt(Math.pow(x_inf - j_d, 2) + Math.pow(y_inf - i_d, 2));
+              var d_inf_wall = Math.sqrt(Math.pow(x_I2 - x_inf, 2) + Math.pow(y_I2 - y_inf, 2));
+              if (d_inf_wall < d_inf_dot) {
+                current_angle += Math.PI;
+              }
             }
           }
         }
@@ -264,7 +272,7 @@
           var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle);
           var x_reflect_inf = inf_points[0];
           var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf, width = 2);
           /*
           var inf_points = direction_points(x_I_current, y_I_current, current_x_angle - current_angle);
           var x_reflect_inf = inf_points[0];
@@ -274,7 +282,7 @@
           var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle + Math.PI);
           var x_reflect_inf = inf_points[0];
           var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
+          // draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
           /*
           var inf_points = direction_points(x_I_current, y_I_current, current_x_angle - current_angle + Math.PI);
           var x_reflect_inf = inf_points[0];
