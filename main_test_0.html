@@ -87,6 +87,21 @@
     return [y2 - y1, x2 - x1, y1 * x2 - x1 * y2]
   }
 
+  function drawLine(x1, y1, x2, y2, color = "black", width = 3) {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function addDot(obj) {
+    dots.push({ "id": next_dot_id, "x": 40, "y": 40 });
+    next_dot_id += 1;
+    paint_raymap(step_size = 3);
+  }
+
   function paint_heatmap(step_size = 7) {
     // todo: make calculation on all dots, not just last one
     var h_steps_size = v_steps_size = step_size;
@@ -100,9 +115,7 @@
           var d = dots[dot];
           var i_d = d["y"],
             j_d = d["x"];
-          var il = i - i_d;
-          var jl = j - j_d;
-          var kl = i_d * j - i * j_d;
+          var [il, jl, kl] = ijk(j, i, j_d, i_d);
           var lx_min = Math.min(j, j_d);
           var lx_max = Math.max(j, j_d);
           var ly_min = Math.min(i, i_d);
@@ -112,9 +125,7 @@
 
           for (var wall in walls) {
             var w = walls[wall];
-            var iw = w["y1"] - w["y0"];
-            var jw = w["x1"] - w["x0"];
-            var kw = w["y0"] * w["x1"] - w["y1"] * w["x0"];
+            var [iw, jw, kw] = ijk(w["x0"], w["y0"], w["x1"], w["y1"]);
             var wx_min = Math.min(w["x0"], w["x1"]);
             var wx_max = Math.max(w["x0"], w["x1"]);
             var wy_min = Math.min(w["y0"], w["y1"]);
@@ -124,7 +135,6 @@
             if (0 < x_I && x_I < c.clientWidth && 0 < y_I && y_I < c.clientHeight && lx_min <= x_I && x_I <= lx_max && ly_min <= y_I && y_I <= ly_max && wx_min <= x_I && x_I <= wx_max && wy_min <= y_I && y_I <= wy_max) {
               var slope_l = il / jl;
               var slope_w = iw / jw;
-              // todo: angle maybe wrong, see raymap function below
               var angle = Math.atan((slope_l - slope_w) / (1 + (slope_l * slope_w)));
               dbm_this_dot -= w["thickness"] / angle ** 2;
             }
@@ -145,13 +155,7 @@
     // draw walls
     for (var wall in walls) {
       var w = walls[wall];
-      ctx.beginPath();
-      ctx.moveTo(w["x0"], w["y0"]);
-      ctx.lineTo(w["x1"], w["y1"]);
-      ctx.strokeStyle = 'yellow';
-      ctx.lineWidth = w["thickness"];
-      ctx.lineJoin = ctx.lineCap = 'round';
-      ctx.stroke();
+      drawLine(w["x0"], w["y0"], w["x1"], w["y1"], color = "yellow", width = w["thickness"]);
     }
     // draw dots
     for (var dot in dots) {
@@ -161,10 +165,8 @@
     update_p1s();
   }
 
-
   function direction_points(x, y, angle) {
     // return an arbitrary point in the wright direction from starting point
-    // x, y are coordinates of starting point
     var distance = 2000;
     return [x + Math.cos(angle) * distance, y + Math.sin(angle) * distance];
   }
@@ -179,15 +181,6 @@
       dirs.push(direction_points(x, y, angles[a]));
     }
     return dirs;
-  }
-
-  function draw_helper_line(x0, y0, x1, y1, width = 0.5) {
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
-    ctx.strokeStyle = 'black';
-    ctx.lineWidth = width;
-    ctx.stroke();
   }
 
   function paint_raymap(step_size = 7) {
@@ -207,25 +200,14 @@
         var j = initial_dirs[dir][0],
           i = initial_dirs[dir][1];
         // ctx.fillRect(j, i, h_steps_size, v_steps_size);
-        var il = i - i_d;
-        var jl = j - j_d;
-        var kl = i_d * j - i * j_d;
-        var lx_min = Math.min(j, j_d);
-        var lx_max = Math.max(j, j_d);
-        var ly_min = Math.min(i, i_d);
-        var ly_max = Math.max(i, i_d);
+        var [il, jl, kl] = ijk(j, i, j_d, i_d);
         var x_I_current = y_I_current = 0;
         var current_angle = 0;
-        var current_x_angle = 0;
-        var dist_dummy = 100000;
-        var dist_min = dist_dummy;
-        var min_wall = 0;
+        var dist_min = dist_dummy = 100000;
 
         for (var wall in walls) {
           var w = walls[wall];
-          var iw = w["y1"] - w["y0"];
-          var jw = w["x1"] - w["x0"];
-          var kw = w["y0"] * w["x1"] - w["y1"] * w["x0"];
+          var [iw, jw, kw] = ijk(w["x0"], w["y0"], w["x1"], w["y1"]);
           var wx_min = Math.min(w["x0"], w["x1"]);
           var wx_max = Math.max(w["x0"], w["x1"]);
           var wy_min = Math.min(w["y0"], w["y1"]);
@@ -244,17 +226,11 @@
               var slope_l = il / jl;
               var slope_w = iw / jw;
               var angle_between_line = Math.atan((slope_w - slope_l) / (1 + (slope_l * slope_w)));
-              var angle_wall_coord_x_axes = Math.atan(slope_w);
-              current_angle = angle_between_line;
-              current_x_angle = angle_wall_coord_x_axes;
+              current_angle = angle_between_line + Math.atan(slope_w);
 
               // check if going to right side
-              var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle);
-              var x_inf = inf_points[0];
-              var y_inf = inf_points[1];
-              var ii = y_inf - i_d;
-              var ji = x_inf - j_d;
-              var ki = i_d * x_inf - y_inf * j_d;
+              var [x_inf, y_inf] = direction_points(x_I_current, y_I_current, current_angle);
+              var [ii, ji, ki] = ijk(x_inf, y_inf, j_d, i_d);
               var x_I2 = (kw * ji - ki * jw) / (ii * jw - iw * ji);
               var y_I2 = (kw * ii - ki * iw) / (ii * jw - iw * ji);
               var d_inf_dot = Math.sqrt(Math.pow(x_inf - j_d, 2) + Math.pow(y_inf - i_d, 2));
@@ -268,17 +244,10 @@
 
         if (dist_min < dist_dummy) {
           //paint dot line for now
-          ctx.beginPath();
-          ctx.moveTo(x_I_current, y_I_current);
-          ctx.lineTo(j_d, i_d);
-          ctx.strokeStyle = 'green';
-          ctx.lineWidth = 5;
-          ctx.stroke();
+          drawLine(x_I_current, y_I_current, j_d, i_d, color = "green", width = 4);
           // paint reflection line
-          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf, width = 2);
+          var [x_ref_inf, y_ref_inf] = direction_points(x_I_current, y_I_current, current_angle);
+          drawLine(x_I_current, y_I_current, x_ref_inf, y_ref_inf, color = "black", width = 1);
         }
       }
     }
@@ -286,13 +255,7 @@
     // draw walls
     for (var wall in walls) {
       var w = walls[wall];
-      ctx.beginPath();
-      ctx.moveTo(w["x0"], w["y0"]);
-      ctx.lineTo(w["x1"], w["y1"]);
-      ctx.strokeStyle = 'yellow';
-      ctx.lineWidth = w["thickness"];
-      ctx.lineJoin = ctx.lineCap = 'round';
-      ctx.stroke();
+      drawLine(w["x0"], w["y0"], w["x1"], w["y1"], color = "yellow", width = w["thickness"]);
     }
     // draw dots
     for (var dot in dots) {
@@ -302,12 +265,6 @@
     update_p1s();
   }
   paint_raymap();
-
-  function addDot(obj) {
-    dots.push({ "id": next_dot_id, "x": 40, "y": 40 });
-    next_dot_id += 1;
-    paint_raymap(step_size = 3);
-  }
 
   //Variables
   var canvasx = $(c).offset().left;
