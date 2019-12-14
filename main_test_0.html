@@ -83,6 +83,10 @@
     }
   }
 
+  function ijk(x1, y1, x2, y2) {
+    return [y2 - y1, x2 - x1, y1 * x2 - x1 * y2]
+  }
+
   function paint_heatmap(step_size = 7) {
     // todo: make calculation on all dots, not just last one
     var h_steps_size = v_steps_size = step_size;
@@ -197,7 +201,7 @@
       var d = dots[dot];
       var i_d = d["y"],
         j_d = d["x"];
-      var initial_dirs = initDirs(j_d, i_d, 15);
+      var initial_dirs = initDirs(j_d, i_d, 80);
 
       for (var dir in initial_dirs) {
         var j = initial_dirs[dir][0],
@@ -243,6 +247,8 @@
               var angle_wall_coord_x_axes = Math.atan(slope_w);
               current_angle = angle_between_line;
               current_x_angle = angle_wall_coord_x_axes;
+
+              // check if going to right side
               var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle);
               var x_inf = inf_points[0];
               var y_inf = inf_points[1];
@@ -273,38 +279,6 @@
           var x_reflect_inf = inf_points[0];
           var y_reflect_inf = inf_points[1];
           draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf, width = 2);
-          /*
-          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle - current_angle);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          */
-          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle + current_angle + Math.PI);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          // draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          /*
-          var inf_points = direction_points(x_I_current, y_I_current, current_x_angle - current_angle + Math.PI);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle + current_angle);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle - current_angle);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle + current_angle + Math.PI);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          var inf_points = direction_points(x_I_current, y_I_current, -current_x_angle - current_angle + Math.PI);
-          var x_reflect_inf = inf_points[0];
-          var y_reflect_inf = inf_points[1];
-          draw_helper_line(x_I_current, y_I_current, x_reflect_inf, y_reflect_inf)
-          */
         }
       }
     }
