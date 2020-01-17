@@ -8,11 +8,16 @@
 <body>
   <div class="image-display">
     <h1>Indoor Designer</h1>
+    <form method=post enctype=multipart/form-data> <input type=file name=file>
+      <input type=submit value=Upload>
+    </form>
     <div>
+      <button id="updload_file">Upload pdf File</button>
       <button id="thick_wall" onclick="setMode(this)">Thick Wall</button>
       <button id="thin_wall" onclick="setMode(this)">Thin Wall</button>
       <button id="add_dot_button" onclick="addDot(this)">Add Dot</button>
     </div>
+
     <div>
       <canvas id="c_heatmap" width="700" height="700" style="border: 1px solid rgb(0,0,0);"></canvas>
     </div>
@@ -46,6 +51,12 @@
     "mousesstate": "nothing yet",
     "dots": dots,
     "walls": walls,
+  }
+
+  var background = new Image();
+  background.src = "../uploads/{{ background_image }}";
+  background.onload = function () {
+    ctx.drawImage(background, 0, 0);
   }
 
   function update_p1s() {
@@ -303,7 +314,8 @@
     if (moving_dot && elapsed > 10) {
       p1s["dots"][hovering_dot_id]["x"] = mousex;
       p1s["dots"][hovering_dot_id]["y"] = mousey;
-      paint_heatmap(step_size = 10);
+      ctx.clearRect(0, 0, c.width, c.height);
+      //paint_heatmap(step_size = 10);
     }
     p1s["current-x"] = mousex;
     p1s["current-y"] = mousey;
@@ -324,6 +336,7 @@
       walls[walls.length - 1]["x1"] = mousex;
       walls[walls.length - 1]["y1"] = mousey;
     }
+    ctx.drawImage(background, 0, 0);
     paint_raymap(step_size = 3);
     p1s["mousesstate"] = "up";
     update_p1s();
