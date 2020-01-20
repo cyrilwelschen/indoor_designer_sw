@@ -3,6 +3,7 @@
 
 <head>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://unpkg.com/mathjs/dist/math.min.js"></script>
 </head>
 
 <body>
@@ -19,10 +20,9 @@
     </div>
 
     <div>
-      <canvas id="c_heatmap" width="700" height="700" style="border: 1px solid rgb(0,0,0);"></canvas>
+      <canvas id="c_heatmap" width="700" height="500" style="border: 1px solid rgb(0,0,0);"></canvas>
     </div>
   </div>
-  <h3>Params 1</h3>
   <p id="params-1"></p>
 </body>
 
@@ -48,6 +48,16 @@
   var p1s = {
     "current-x": "0",
     "current-y": "0",
+    "offsetX": "0",
+    "offsetY": "0",
+    "offsetLeft": "0",
+    "offsetTop": "0",
+    "pageX": "0",
+    "pageY": "0",
+    "clientX": "0",
+    "clientY": "0",
+    "canvasx": "0",
+    "canvasy": "0",
     "mousesstate": "nothing yet",
     "dots": dots,
     "walls": walls,
@@ -55,6 +65,7 @@
 
   var background = new Image();
   background.src = "../uploads/{{ background_image }}";
+  background.src = "../uploads/Spital_Brig.jpg";
   background.onload = function () {
     ctx.drawImage(background, 0, 0);
   }
@@ -288,11 +299,19 @@
   var last_wall_id = -1;
   var time = Date.now();
 
+  var matrix = [1, 0, 0, 1, 0, 0];
+  var inv_matrix = [1, 0, 0, 1, 0, 0];
+  var scaleFactor = 1.1;
+  var lastX = c.width / 2, lastY = c.height / 2;
+
+
   //Mousedown
-  $(c).on('mousedown', function (e) {
+  c.addEventListener('mousedown', function (e) {
     last_mousex = parseInt(e.clientX - canvasx);
     last_mousey = parseInt(e.clientY - canvasy);
-    dot_hover = hoveringDot(last_mousex, last_mousey);
+    var realX = getRealXY(e.offsetX, e.offsetY).x;
+    var realY = getRealXY(e.offsetX, e.offsetY).y;
+    dot_hover = hoveringDot(realX, realY);
     if (dot_hover) {
       // wait and see if dot is dragged
       moving_dot = true;
@@ -300,47 +319,75 @@
     } else {
       mousedown = true;
       last_wall_id += 1;
-      walls.push({ "id": last_wall_id, "x0": last_mousex, "y0": last_mousey, "thickness": wall_thickness });
+      console.log("relX: ", realX);
+      walls.push({ "id": last_wall_id, "x0": realX, "y0": realY, "thickness": wall_thickness });
     }
+    console.log(lastX, lastY);
+    console.log("current coorindates: ", getXY(e.offsetX, e.offsetY));
+    console.log("original coordinates: ", getRealXY(e.offsetX, e.offsetY));
     p1s["mousesstate"] = "down";
     update_p1s();
-  });
+  }, false);
 
   //Mousemove
-  $(c).on('mousemove', function (e) {
+  c.addEventListener('mousemove', function (e) {
+    lastX = e.offsetX || (e.pageX - c.offsetLeft);
+    lastY = e.offsetY || (e.pageY - c.offsetTop);
     mousex = parseInt(e.clientX - canvasx);
     mousey = parseInt(e.clientY - canvasy);
+    var realX = getRealXY(e.offsetX, e.offsetY).x;
+    var realY = getRealXY(e.offsetX, e.offsetY).y;
     var elapsed = Date.now() - time;
     if (moving_dot && elapsed > 10) {
-      p1s["dots"][hovering_dot_id]["x"] = mousex;
-      p1s["dots"][hovering_dot_id]["y"] = mousey;
-      ctx.clearRect(0, 0, c.width, c.height);
+      p1s["dots"][hovering_dot_id]["x"] = realX;
+      p1s["dots"][hovering_dot_id]["y"] = realY;
+      ctx.clearRect(-2000, -2000, 4000, 4000);
       //paint_heatmap(step_size = 10);
+      ctx.drawImage(background, 0, 0);
+      paint_raymap(step_size = 3);
     }
     p1s["current-x"] = mousex;
     p1s["current-y"] = mousey;
     p1s["mousesstate"] = "move";
     update_p1s();
-  });
+  }, false);
 
   //Mouseup
-  $(c).on('mouseup', function (e) {
+  c.addEventListener('mouseup', function (e) {
+    var realX = getRealXY(e.offsetX, e.offsetY).x;
+    var realY = getRealXY(e.offsetX, e.offsetY).y;
     if (dot_hover) {
       //repaint dot
-      p1s["dots"][hovering_dot_id]["x"] = mousex;
-      p1s["dots"][hovering_dot_id]["y"] = mousey;
+      p1s["dots"][hovering_dot_id]["x"] = realX;
+      p1s["dots"][hovering_dot_id]["y"] = realY;
       moving_dot = false;
       dot_hover = false;
     } else {
       mousedown = false;
-      walls[walls.length - 1]["x1"] = mousex;
-      walls[walls.length - 1]["y1"] = mousey;
+      walls[walls.length - 1]["x1"] = realX;
+      walls[walls.length - 1]["y1"] = realY;
     }
     ctx.drawImage(background, 0, 0);
     paint_raymap(step_size = 3);
     p1s["mousesstate"] = "up";
     update_p1s();
-  });
+  }, false);
+
+  c.addEventListener('mousewheel', function (e) {
+    var delta = e.wheelDelta ? e.wheelDelta / 40 : e.detail ? -e.detail : 0;
+    if (delta) {
+      translate(getRealXY(lastX, lastY).x, getRealXY(lastX, lastY).y);
+      var factor = Math.pow(scaleFactor, delta);
+      scale(factor, factor);
+      translate(-getRealXY(lastX, lastY).x, -getRealXY(lastX, lastY).y);
+      inv_matrix = turnMatrixIntoArray(math.inv(turnArrayIntoMatrix(matrix)));
+      ctx.clearRect(-2000, -2000, 4000, 4000);
+      ctx.drawImage(background, 0, 0);
+      paint_raymap(step_size = 3);
+    };
+    return e.preventDefault() && false;
+  }
+    , false);
 
   function hoveringDot(x, y) {
     for (var dot in dots) {
@@ -352,4 +399,61 @@
     }
     return false;
   }
+
+  function turnArrayIntoMatrix(fakeMatrix) {
+    /* fakeMatrix is our array of 6 elements that we need
+       to turn into a multi-dimensional 3x3 array: */
+    //realMatrix is the real matrix we will return:
+    var realMatrix = [[], [], [0, 0, 1]];
+    for (var i = 0; i < 3; i++) {
+      //Add the (2*i)th element to the first row:
+      realMatrix[0].push(fakeMatrix[2 * i]);
+      //Add the (2*i+1)th element to the second row:
+      realMatrix[1].push(fakeMatrix[2 * i + 1]);
+    }
+    //Finally, return realMatrix:
+    return realMatrix;
+  }
+
+  function turnMatrixIntoArray(realMatrix) {
+    /* realMatrix is the 3x3 multi-dimensional array
+       that we need to turn back into our six-element array: */
+    //array is the array we're going to return:
+    var array = [];
+    for (var i = 0; i < 3; i++) {
+      //Push the first and second element from each column into array:
+      array.push(realMatrix[0][i]);
+      array.push(realMatrix[1][i]);
+    }
+    //Finally, return array:
+    return array;
+  }
+  //This shows us the inverse of our matrix:
+
+  function translate(x, y) {
+    matrix[4] += matrix[0] * x + matrix[2] * y;
+    matrix[5] += matrix[1] * x + matrix[3] * y;
+    ctx.translate(x, y);
+  }
+
+  function scale(x, y) {
+    matrix[0] *= x;
+    matrix[1] *= x;
+    matrix[2] *= y;
+    matrix[3] *= y;
+    ctx.scale(x, y);
+  }
+
+  function getXY(mouseX, mouseY) {
+    newX = mouseX * matrix[0] + mouseY * matrix[2] + matrix[4];
+    newY = mouseX * matrix[1] + mouseY * matrix[3] + matrix[5];
+    return ({ x: newX, y: newY });
+  }
+
+  function getRealXY(mouseX, mouseY) {
+    newX = mouseX * inv_matrix[0] + mouseY * inv_matrix[2] + inv_matrix[4];
+    newY = mouseX * inv_matrix[1] + mouseY * inv_matrix[3] + inv_matrix[5];
+    return ({ x: newX, y: newY });
+  }
+
 </script>
